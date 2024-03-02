@@ -1,7 +1,8 @@
-FROM node:slim
-WORKDIR /tg-filter
+FROM arm64v8/node:lts-alpine
 
-COPY package.json ./
+WORKDIR /tg-filter
+COPY package.json .
 RUN npm install
 COPY . .
+
 CMD ["npm", "start"]

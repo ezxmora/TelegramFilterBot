@@ -25,12 +25,10 @@ bot.on("message", async (ctx) => {
     if (validUrl) {
       const { id, username, first_name } = ctx.message.from;
       process.stdout.write(
-        `DELETED ${id} - ${username} / ${first_name} - ${findUrl}`
+        `DELETED ${id} - ${username} / ${first_name} - ${findUrl}\n`
       );
       await ctx.reply(
-        `¡Vaya ${first_name}! 😱
-        Parece que has pasado un tweet de un subnormal registrado.
-        Si crees que ha sido un falso positivo contacta con el administrador del bot.`
+        `¡Vaya ${first_name}! 😱\nParece que has pasado un tweet de un subnormal registrado.\nSi crees que ha sido un falso positivo contacta con el administrador del bot.`
       );
       await ctx.deleteMessage(ctx.message.message_id);
     }
