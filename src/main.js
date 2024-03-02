@@ -39,7 +39,7 @@ bot.on("message", async (ctx) => {
 
 bot.launch(() => {
   blacklist = fs
-    .readFileSync("./blacklist.txt", { encoding: "utf-8" })
+    .readFileSync(`${process.cwd()}/blacklist.txt`, { encoding: "utf-8" })
     .toLowerCase()
     .split("\r\n");
 });

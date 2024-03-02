@@ -1,5 +1,5 @@
 FROM node:slim
-WORKDIR /app
+WORKDIR /tg-filter
 
 COPY package.json ./
 RUN npm install
