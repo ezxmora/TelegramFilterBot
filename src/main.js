@@ -17,8 +17,9 @@ const validateUrl = (url) => {
 };
 
 bot.on("message", async (ctx) => {
-  const messageContent = ctx.update.message.text;
-  const splittedMessage = messageContent.split(" ");
+  const messageContent = ctx.update.message?.text;
+  if (!messageContent.length) return;
+
   const findUrl = splittedMessage.find((v) => v.includes("https://"));
   if (findUrl) {
     const validUrl = validateUrl(findUrl.toString());
