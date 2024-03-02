@@ -1,0 +1,4 @@
+.env
+blacklist.txt
+node_modules/
+yarn.lock
