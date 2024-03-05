@@ -1,4 +1,4 @@
 .env
-blacklist.txt
+blacklist.*
 node_modules/
 yarn.lock
