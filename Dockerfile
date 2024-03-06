@@ -1,5 +1,5 @@
-FROM arm64v8/alpine
-
+#FROM arm64v8/alpine
+FROM alpine
 ## Downloading dependencies
 RUN apk add --no-cache \
       chromium \
@@ -9,11 +9,13 @@ RUN apk add --no-cache \
       ca-certificates \
       ttf-freefont \
       nodejs \
+      font-noto-emoji \
+      font-noto \
       yarn
 
+## System configurations
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 RUN addgroup -S tgfilter && adduser -S -G tgfilter tgfilter
-
 
 WORKDIR /home/tgfilter
 

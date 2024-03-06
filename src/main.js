@@ -1,95 +1,79 @@
 import { Telegraf } from "telegraf";
 import {
-  escapeMarkdown,
-  extractTweetScreenshot,
+  initializeBrowser,
   extractUsername,
-} from "./util.js";
+  screenshotTweet,
+} from "./libs/browser.js";
+import { escapeMarkdown, findUrl } from "./libs/validation.js";
 import fs from "fs";
 import "dotenv/config";
-let blacklist;
+import { Logger } from "./libs/logger.js";
+let blacklist, browser;
 
 const bot = new Telegraf(process.env.BOT_TOKEN, { username: "McFarlaneBot" });
-
-const findUrlInMessage = ({ message }) => {
-  const { text, entities } = message;
-  if (entities) {
-    const messageType = entities.find(
-      (v) => v.type == "url" || v.type == "text_link"
-    );
-
-    if (messageType?.type == "url") {
-      return text
-        .split(" ")
-        .find((v) => v.includes("https://") || v.includes("http://"));
-    }
-
-    if (messageType?.type == "text_link") {
-      return messageType.url;
-    }
-  }
-
-  return;
-};
-
-const validateUrl = async (url) => {
-  const twitterRegex = new RegExp(
-    /(https|http)?:\/\/(x|twitter|fixupx|fxtwitter)?\.com\/(\w+)\/(status(?:es)?)\/(\d+)/gim
-  );
-  const isATweet = twitterRegex.exec(url);
-  if (!isATweet) return false;
-
-  const getRealUsername = await extractUsername(url);
-
-  return blacklist[getRealUsername.toLowerCase()];
-};
-
-bot.command("blacklist", async (ctx) => {
-  const { from } = ctx.message;
-  const blacklistedUsers = Object.keys(blacklist)
-    .map((i) => `- ${i}`)
-    .join("\n");
-  const outputText = escapeMarkdown(
-    `Lista de cuentas censuradas:\n\n${blacklistedUsers}`
-  );
-
-  ctx.deleteMessage(ctx.message.id);
-  ctx.telegram.sendMessage(from.id, outputText, { parse_mode: "MarkdownV2" });
-});
+const logger = new Logger();
 
 bot.telegram.setMyCommands([
   { command: "blacklist", description: "Muestra la lista negra" },
 ]);
 
+bot.command("blacklist", async (ctx) => {
+  const { from, message_id, chat } = ctx.message;
+
+  try {
+    const blacklistedUsers = Object.keys(blacklist)
+      .map((i) => `- ${i}`)
+      .join("\n");
+    const outputText = escapeMarkdown(
+      `Lista de cuentas censuradas:\n\n${blacklistedUsers}`
+    );
+    ctx.telegram.sendMessage(from.id, outputText, { parse_mode: "MarkdownV2" });
+  } catch (e) {
+    logger.error(
+      "There was an error triying to send the blacklist to the user"
+    );
+    process.stderr.write(e);
+  } finally {
+    logger.log(
+      `BLACKLIST @ ${chat.id} > ${message_id} - @${from.username} / ${from.first_name}`
+    );
+    ctx.deleteMessage(ctx.message.id);
+  }
+});
+
 bot.on("message", async (ctx) => {
   const { from, text, message_id, chat } = ctx.message;
   if (!text?.length) return;
 
-  const url = findUrlInMessage(ctx);
+  const url = findUrl(ctx.message);
   if (!url) return;
+
+  if (!browser) await initializeBrowser();
 
   const processingTweet = await ctx.telegram.sendMessage(
     chat.id,
     "Procesando tweet... ⌛"
   );
 
-  const validUrl = await validateUrl(url);
+  const username = await extractUsername(browser, url);
+  const isBlacklisted = blacklist[username.toLowerCase()];
 
-  if (validUrl) {
+  if (isBlacklisted) {
     const { username, first_name } = from;
-    const screenshot = await extractTweetScreenshot(url);
 
-    if (validUrl.show === 1) {
+    if (isBlacklisted.show === 1) {
+      const screenshot = await screenshotTweet(browser, url);
       ctx.sendPhoto(
         { source: Buffer.from(screenshot, "base64") },
         {
           has_spoiler: true,
-          caption: `*${first_name}* ha pasado un tweet de un subnormal registrado\nEnlace al tweet: [tweet](${url})`,
+          caption: `*${first_name}* ha enviado un tweet de un subnormal registrado\n[Enlace al tweet](${url})`,
           parse_mode: "MarkdownV2",
         }
       );
     } else {
       ctx.sendMessage(
-        `*${first_name}* ha pasado un tweet de un subnormal registrado\nEnlace al tweet: [tweet](${url})`,
+        `*${first_name}* ha enviado un tweet de un subnormal registrado\n[Enlace al tweet](${url})`,
         {
           parse_mode: "MarkdownV2",
           link_preview_options: { is_disabled: true },
@@ -98,8 +82,8 @@ bot.on("message", async (ctx) => {
     }
 
     await ctx.deleteMessage(ctx.update.message.message_id);
-    process.stdout.write(
-      `DELETED ${message_id} - @${username} / ${first_name} - ${url}\n`
+    logger.log(
+      `DELETED @ ${chat.id} > ${message_id} - [@${username} / ${first_name}] > URL: ${url}\n`
     );
   }
   await ctx.telegram.deleteMessage(
@@ -108,12 +92,13 @@ bot.on("message", async (ctx) => {
   );
 });
 
-bot.launch({ allowedUpdates: true }, () => {
+bot.launch({ allowedUpdates: true }, async () => {
   blacklist = JSON.parse(
     fs
       .readFileSync(`${process.cwd()}/blacklist.json`, { encoding: "utf-8" })
       .toLowerCase()
   );
+  browser = await initializeBrowser();
 });
 
 process.once("SIGINT", () => bot.stop("SIGINT"));
