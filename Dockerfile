@@ -17,11 +17,11 @@ RUN apk add --no-cache \
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 RUN addgroup -S tgfilter && adduser -S -G tgfilter tgfilter
 
-WORKDIR /home/tgfilter
+WORKDIR /tgfilter
 
 ## Setting up premissions
-RUN chown -R tgfilter:tgfilter /home/tgfilter
-RUN chmod -R 777 /home/tgfilter
+RUN chown -R tgfilter:tgfilter /tgfilter
+RUN chmod -R 777 /tgfilter
 
 USER tgfilter
 
