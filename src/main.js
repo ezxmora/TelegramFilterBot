@@ -42,54 +42,60 @@ bot.command("blacklist", async (ctx) => {
 });
 
 bot.on("message", async (ctx) => {
+  let processingTweet;
   const { from, text, message_id, chat } = ctx.message;
   if (!text?.length) return;
 
   const url = findUrl(ctx.message);
   if (!url) return;
 
-  if (!browser) await initializeBrowser();
+  try {
+    if (!browser) await initializeBrowser();
 
-  const processingTweet = await ctx.telegram.sendMessage(
-    chat.id,
-    "Procesando tweet... ⌛"
-  );
+    processingTweet = await ctx.telegram.sendMessage(
+      chat.id,
+      "Procesando enlace... ⌛"
+    );
 
-  const username = await extractUsername(browser, url);
-  const isBlacklisted = blacklist[username.toLowerCase()];
+    const username = await extractUsername(browser, url);
+    const isBlacklisted = blacklist[username?.toLowerCase()];
 
-  if (isBlacklisted) {
-    const { username, first_name } = from;
+    if (isBlacklisted) {
+      const { username, first_name } = from;
 
-    if (isBlacklisted.show === 1) {
-      const screenshot = await screenshotTweet(browser, url);
-      ctx.sendPhoto(
-        { source: Buffer.from(screenshot, "base64") },
-        {
-          has_spoiler: true,
-          caption: `*${first_name}* ha enviado un tweet de un subnormal registrado\n[Enlace al tweet](${url})`,
-          parse_mode: "MarkdownV2",
-        }
-      );
-    } else {
-      ctx.sendMessage(
-        `*${first_name}* ha enviado un tweet de un subnormal registrado\n[Enlace al tweet](${url})`,
-        {
-          parse_mode: "MarkdownV2",
-          link_preview_options: { is_disabled: true },
-        }
+      if (isBlacklisted.show === 1) {
+        const screenshot = await screenshotTweet(browser, url);
+        ctx.sendPhoto(
+          { source: Buffer.from(screenshot, "base64") },
+          {
+            has_spoiler: true,
+            caption: `*${first_name}* ha enviado un tweet de un subnormal registrado\n[Enlace al tweet](${url})`,
+            parse_mode: "MarkdownV2",
+          }
+        );
+      } else {
+        ctx.sendMessage(
+          `*${first_name}* ha enviado un tweet de un subnormal registrado\n[Enlace al tweet](${url})`,
+          {
+            parse_mode: "MarkdownV2",
+            link_preview_options: { is_disabled: true },
+          }
+        );
+      }
+
+      await ctx.deleteMessage(ctx.update.message.message_id);
+      logger.log(
+        `DELETED @ ${chat.id} > ${message_id} - [@${username} / ${first_name}] > URL: ${url}\n`
       );
     }
-
-    await ctx.deleteMessage(ctx.update.message.message_id);
-    logger.log(
-      `DELETED @ ${chat.id} > ${message_id} - [@${username} / ${first_name}] > URL: ${url}\n`
+  } catch (e) {
+    logger.error(`DELETED - ${e}`);
+  } finally {
+    await ctx.telegram.deleteMessage(
+      processingTweet.chat.id,
+      processingTweet.message_id
     );
   }
-  await ctx.telegram.deleteMessage(
-    processingTweet.chat.id,
-    processingTweet.message_id
-  );
 });
 
 bot.launch({ allowedUpdates: true }, async () => {

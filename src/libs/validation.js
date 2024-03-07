@@ -47,12 +47,12 @@ export const findUrl = (message) => {
   }
 
   return;
-}
+};
 
 export const validateUrl = (url) => {
   const twitterRegex = new RegExp(
-    /(https|http)?:\/\/(x|twitter|fixupx|fxtwitter)?\.com\/(\w+)\/(status(?:es)?)\/(\d+)/gim
+    /(https|http):\/\/(www\.)?(x|twitter|fixupx|fxtwitter)\.com\/(\w+)\/(status(?:es)?)\/(\d+)/gim
   );
 
   return twitterRegex.exec(url);
-}
+};
